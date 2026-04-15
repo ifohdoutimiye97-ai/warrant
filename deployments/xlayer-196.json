@@ -1,0 +1,27 @@
+{
+  "network": "X Layer mainnet",
+  "chainId": 196,
+  "deployer": "0x99334FEFCc30E33F4D29302fbb18E5b6B7e68061",
+  "rpc": "https://rpc.xlayer.tech",
+  "blockExplorer": "https://www.okx.com/web3/explorer/xlayer",
+  "strategyRegistry": "0x531eC789d3627bF3fd511010791C1EfFc63c2DA6",
+  "proofVerifier": "0xe157673b3FC3C7f02655982F1EfA32eC7383dFe8",
+  "attestationVerifier": "0x9c0AC1C1997a8129E62A8fF60Eae4F23AB345cB2",
+  "liquidityVault": "0xbFFc45c976D0518E2B023c1f6e68fDD4339d76FC",
+  "rewardSplitter": "0x81AdD46B05407146B049116C66eDF2B879eCc06e",
+  "uniswap": {
+    "v3Factory": "0x4b2ab38dbf28d31d467aa8993f6c2585981d6804",
+    "swapRouter02": "0x7078c4537c04c2b2e52ddba06074dbdacf23ca15",
+    "nonfungiblePositionManager": "0x315e413a11ab0df498ef83873012430ca36638ae",
+    "quoterV2": "0xd1b797d92d87b688193a2b976efc8d577d204343",
+    "defaultPool": "0x77ef18adf35f62b2ad442e4370cdbc7fe78b7dcc"
+  },
+  "ownerWallet": "0x99334FEFCc30E33F4D29302fbb18E5b6B7e68061",
+  "scoutAgentWallet": "0x86b0E1c48d39D58304939c0681818F0E1c1e8d83",
+  "executorAgentWallet": "0x4F5A8Bf1A3F38E1a336cD4ce2da023715492a7B9",
+  "treasuryAgentWallet": "0x9A71fB837afFb66348250BC8F74b3A6b4F122EE0",
+  "attestationSigner": "0x86b0E1c48d39D58304939c0681818F0E1c1e8d83",
+  "verifierBackend": "AttestationVerifier(0x86b0E1c48d39D58304939c0681818F0E1c1e8d83)",
+  "insecureProofs": false,
+  "deployedAt": "2026-04-11T16:07:56.494Z"
+}

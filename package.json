@@ -1,0 +1,36 @@
+{
+  "name": "warrant",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "check": "tsc --noEmit -p tsconfig.check.json",
+    "contracts:compile": "tsx scripts/compile-contracts.ts",
+    "contracts:deploy": "tsx scripts/deploy-contracts.ts",
+    "contracts:test": "tsx scripts/test-contracts.ts",
+    "agents:generate": "tsx scripts/generate-agent-wallets.ts",
+    "submission:bundle": "tsx scripts/prepare-submission.ts",
+    "submission:check": "tsx scripts/check-readiness.ts"
+  },
+  "dependencies": {
+    "ethers": "6.15.0",
+    "next": "16.2.3",
+    "react": "19.2.0",
+    "react-dom": "19.2.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.2.2",
+    "@types/node": "24.10.1",
+    "@types/react": "19.2.2",
+    "@types/react-dom": "19.2.2",
+    "autoprefixer": "^10.4.27",
+    "dotenv": "16.6.1",
+    "postcss": "^8.5.9",
+    "solc": "0.8.30",
+    "tailwindcss": "^4.2.2",
+    "tsx": "4.20.6",
+    "typescript": "5.9.3"
+  }
+}

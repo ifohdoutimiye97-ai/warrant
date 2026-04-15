@@ -1,0 +1,18 @@
+{
+  "network": "X Layer mainnet",
+  "chainId": 196,
+  "rpc": "https://rpc.xlayer.tech",
+  "blockExplorer": "https://www.okx.com/web3/explorer/xlayer",
+  "strategyRegistry": "TBD_AFTER_DEPLOYMENT",
+  "proofVerifier": "TBD_AFTER_DEPLOYMENT",
+  "attestationVerifier": "TBD_AFTER_DEPLOYMENT",
+  "liquidityVault": "TBD_AFTER_DEPLOYMENT",
+  "rewardSplitter": "TBD_AFTER_DEPLOYMENT",
+  "ownerWallet": "0x99334FEFCc30E33F4D29302fbb18E5b6B7e68061",
+  "scoutAgentWallet": "0x86b0E1c48d39D58304939c0681818F0E1c1e8d83",
+  "executorAgentWallet": "0x4F5A8Bf1A3F38E1a336cD4ce2da023715492a7B9",
+  "treasuryAgentWallet": "0x9A71fB837afFb66348250BC8F74b3A6b4F122EE0",
+  "attestationSigner": "0x86b0E1c48d39D58304939c0681818F0E1c1e8d83",
+  "verifierBackend": "AttestationVerifier (ECDSA over (strategyId, proposalHash, executionHash))",
+  "insecureProofs": false
+}

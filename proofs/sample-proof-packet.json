@@ -1,0 +1,15 @@
+{
+  "proofId": "proof_0x91af...b17d",
+  "strategyId": 1,
+  "strategyHash": "0x14bd...1f2a",
+  "proposalHash": "0xa912...4ef0",
+  "executionHash": "0x5e08...7b11",
+  "publicInputsHash": "0x7cd1...22ab",
+  "allowedPool": "WETH / USDC",
+  "riskLevel": "Medium",
+  "maxRebalancesPerDay": 2,
+  "remainingAfterMove": 1,
+  "verifierStatus": "Accepted",
+  "verifierBackend": "embedded-demo-mode",
+  "consumed": false
+}
