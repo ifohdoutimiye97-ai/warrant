@@ -3,6 +3,10 @@ node_modules
 tsconfig.tsbuildinfo
 tsconfig.check.tsbuildinfo
 
+# macOS junk
+.DS_Store
+**/.DS_Store
+
 # Secrets — must never be committed
 .env
 .env.*
