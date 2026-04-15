@@ -73,6 +73,19 @@ export async function readOwnerPositions(params: {
   const rpcUrl = params.rpcUrl ?? network.rpc;
   const provider = new JsonRpcProvider(rpcUrl);
 
+  // Short-circuit: ERC721.balanceOf(zero-address) reverts by spec. If the
+  // caller hasn't connected a wallet yet, return an empty inventory
+  // instead of letting the RPC raise.
+  if (!params.owner || /^0x0+$/i.test(params.owner)) {
+    return {
+      manager: UNISWAP_XLAYER_MAINNET.nonfungiblePositionManager,
+      owner: params.owner,
+      balance: 0,
+      positions: [],
+      matchingPool: [],
+    };
+  }
+
   const nfpm = new Contract(
     UNISWAP_XLAYER_MAINNET.nonfungiblePositionManager,
     NFPM_READ_ABI as unknown as InterfaceAbi,
