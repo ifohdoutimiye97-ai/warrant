@@ -4,6 +4,39 @@ Proof-gated liquidity agents on X Layer.
 
 **No warrant, no move.** Warrant is a full-stack hackathon submission for Build X Season 2. Owners declare a liquidity strategy in plain language, and every AI-driven rebalance must clear a warrant — a proof that the move respects the declared policy — before capital can leave the vault.
 
+## Build X Season 2 · Compliance at a glance
+
+This table cross-references every hackathon requirement to the exact
+place in this repo where it is satisfied. Judges can audit compliance
+by clicking through the right column.
+
+### Required items (必要项)
+
+| # | Requirement (paraphrased) | Satisfied? | Evidence |
+|---|---|---|---|
+| 1 | At least one component built on X Layer | ✅ | All 5 contracts deployed on X Layer mainnet **chainId 196** — see [`deployments/xlayer-196.json`](./deployments/xlayer-196.json) and the [Deployment addresses](#deployment-addresses) section. Every Scout proposal reads live state from X Layer RPC. |
+| 2 | Agentic Wallet as the on-chain identity; multi-agent roles documented in README | ✅ | **4 role-separated agent wallets** documented below in [Agent wallet identities](#agent-wallet-identities) — Owner, Scout, Executor, Treasury. Full permission graph in [docs/agent-identities.md](./docs/agent-identities.md). |
+| 3 | Call at least one core module of Onchain OS Skill OR Uniswap Skill | ✅ | **7 Skill modules integrated, 12 live calls per Scout proposal** — see [Onchain OS / Uniswap Skill usage](#onchain-os--uniswap-skill-usage). Uniswap: `V3Pool`, `QuoterV2`, `TickLens`, `V3Factory`, `NFPM`, `SwapRouter02`. Onchain OS: `okx-dex-swap` (HMAC-signed DEX Aggregator). |
+| 4a | Code in a public GitHub repo | 🕓 | Repo URL will be populated on push — see the [Team](#team) section. |
+| 4b | README — Project intro | ✅ | [Project intro](#project-intro) |
+| 4c | README — Architecture overview | ✅ | [Architecture overview](#architecture-overview) |
+| 4d | README — Deployment addresses | ✅ | [Deployment addresses](#deployment-addresses) + [End-to-end verification on X Layer mainnet](#end-to-end-verification-on-x-layer-mainnet) |
+| 4e | README — Onchain OS / Uniswap Skill usage | ✅ | [Onchain OS / Uniswap Skill usage](#onchain-os--uniswap-skill-usage) — all 7 modules with call paths, ABIs, and rationale |
+| 4f | README — Operation mechanism | ✅ | [Operation mechanism](#operation-mechanism) |
+| 4g | README — Team members | ✅ | [Team](#team) |
+| 4h | README — X Layer ecosystem positioning | ✅ | [X Layer ecosystem positioning](#x-layer-ecosystem-positioning) |
+| 5 | Google Form submission before 2026-04-15 23:59 UTC | 🕓 | Submission packet ready in [submission/FINAL_PACKET.md](./submission/FINAL_PACKET.md) and [submission/GOOGLE_FORM_COPY.md](./submission/GOOGLE_FORM_COPY.md). Filing is a human action. |
+
+### Bonus items (加分项)
+
+| # | Bonus item | Status | Evidence |
+|---|---|---|---|
+| B1 | 1–3 min Demo video on YouTube / Google Drive | 🎬 Script ready | Shooting script: [docs/demo-script.md](./docs/demo-script.md). Video recording + upload is a human action; link will land in [Team](#team). |
+| B2 | X post with `#XLayerHackathon` (and @XLayerOfficial), including project name + image/video | 📝 Copy ready | Paste-ready threads: [docs/x-post-template.md](./docs/x-post-template.md). Posting is a human action. |
+| B3 | **Effectively** integrate more Onchain OS / Uniswap Skills | ✅ **7 modules** | **6 Uniswap** (`V3Pool` · `QuoterV2` · `TickLens` · `V3Factory` · `NFPM` · `SwapRouter02`) **+ 1 Onchain OS** (`okx-dex-swap`). Source of truth: [`app/api/scout/propose/route.ts`](./app/api/scout/propose/route.ts). Each call has its own file under [`lib/uniswap/`](./lib/uniswap) and [`lib/okx/`](./lib/okx). |
+
+> Legend: ✅ done · 🕓 done on our side, waiting on final human submission step · 🎬/📝 artefact ready, waiting on recording / posting.
+
 ## Project intro
 
 Autonomous DeFi agents are only useful if owners can verify that capital moves inside the rules they signed off on. Warrant treats that guarantee as the core primitive, not an afterthought:
@@ -219,16 +252,7 @@ methods were invoked.
 
 ## Operation mechanism
 
-### Verified end-to-end
-
-The Scout API was live-tested against X Layer mainnet (chainId 196)
-reading the `xETH / USDT0 0.05%` pool
-`0x77ef18adf35f62b2ad442e4370cdbc7fe78b7dcc`. The response included a
-real block number, real sqrtPriceX96, real `executionHash`, and real
-token symbols — all computed against the canonical Uniswap v3
-deployment referenced in `config/uniswap.ts`.
-
-## Operation mechanism
+### Step-by-step lifecycle
 
 - The owner enters a strategy in natural language.
 - The frontend compiles it into machine-readable guardrails.
@@ -247,6 +271,17 @@ deployment referenced in `config/uniswap.ts`.
   reverts.
 - Treasury Agent records fees via `RewardSplitter.recordEpoch`, which is
   access-controlled and enforces `scoutReward + executorReward + treasuryReward <= grossFees`.
+
+### Live verification
+
+The Scout API was live-tested against X Layer mainnet (chainId 196)
+reading the `xETH / USDT0 0.05%` pool
+`0x77ef18adf35f62b2ad442e4370cdbc7fe78b7dcc`. The response included a
+real block number, real sqrtPriceX96, real `executionHash`, and real
+token symbols — all computed against the canonical Uniswap v3
+deployment referenced in `config/uniswap.ts`. See the **End-to-end
+verification on X Layer mainnet** section below for the 5 on-chain
+transaction hashes captured by `pnpm tsx scripts/run-happy-path.ts`.
 
 ## X Layer ecosystem positioning
 
