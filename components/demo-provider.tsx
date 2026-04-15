@@ -37,6 +37,43 @@ import type { RebalanceAction, RiskProfile } from "@/lib/uniswap/scout";
 
 type ProofStatus = "idle" | "proposed" | "verified" | "executed" | "blocked";
 
+export type ScoutAdvicePayload = {
+  mode: "anthropic" | "openai" | "rule-based";
+  model?: string;
+  recommendation: "sign-warrant" | "hold" | "widen-range" | "abort";
+  confidence: number;
+  flags: string[];
+  rationale: string;
+  note?: string;
+};
+
+/**
+ * Minimal observation shape forwarded to /api/ai/chat so the chat
+ * panel shares the same live context the advisor just analysed.
+ */
+export type LiveObservation = {
+  chainId: number;
+  pool: {
+    address: string;
+    token0: string;
+    token1: string;
+    feeBps: number;
+    tickSpacing: number;
+    currentTick: number;
+    priceToken1InToken0: string;
+    blockNumber: number;
+  };
+  proposal: {
+    strategyId: number;
+    risk: "low" | "medium" | "high";
+    lowerTick: number;
+    upperTick: number;
+    proposalHash: string;
+    executionHash: string;
+  };
+  signals: Record<string, unknown>;
+};
+
 export type LiveProposal = {
   chainId: number;
   networkName: string;
@@ -44,6 +81,7 @@ export type LiveProposal = {
   executionHash: string;
   action: RebalanceAction;
   rationale: string;
+  rationaleExtensions?: string[];
   blockNumber: number;
   observedAtIso: string;
   token0Symbol: string;
@@ -52,6 +90,8 @@ export type LiveProposal = {
   priceToken1InToken0: string;
   quote: QuoteResult | null;
   skillCalls: ScoutSkillCall[];
+  llmAdvice?: ScoutAdvicePayload;
+  observation?: LiveObservation;
 };
 
 type DemoContextValue = {
@@ -428,6 +468,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       executionHash: proposal.executionHash,
       action: proposal.action,
       rationale: proposal.rationale,
+      rationaleExtensions: proposal.rationaleExtensions,
       blockNumber: proposal.snapshot.blockNumber,
       observedAtIso: proposal.snapshot.observedAtIso,
       token0Symbol: proposal.snapshot.token0.symbol,
@@ -436,6 +477,8 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       priceToken1InToken0: proposal.snapshot.priceToken1InToken0,
       quote: proposal.quote,
       skillCalls,
+      llmAdvice: proposal.llmAdvice,
+      observation: proposal.observation,
     };
 
     startTransition(() => {
@@ -520,48 +563,158 @@ export function DemoProvider({ children }: { children: ReactNode }) {
 
     setIsBusy(true);
 
-    startTransition(() => {
-      setProofStatus("verified");
-      updateProofLine("Verifier output", "Accepted", true);
+    // If we have a live observation from a previous Scout proposal,
+    // we upgrade "verify proof" from a pure local state flip into a
+    // real AI-advisor call: POST /api/ai/advise, block execution on
+    // 'abort' recommendations, and fold the rationale into the terminal
+    // feed. When no live observation exists (pure-demo mode), fall
+    // through to the classic local flow so the page still behaves.
+    const observation = liveProposal?.observation ?? null;
 
-      setAgentStates((current) =>
-        updateAgentState(current, {
-          Scout: {
-            status: "Verified",
-            description: "Latest proposal satisfied declared strategy constraints and cleared the verifier.",
-          },
-          Executor: {
-            status: "Ready",
-            description: "Proof gate is open. Executor can submit the rebalance to the vault.",
-          },
-          Treasury: {
-            status: "Queued",
-            description: "Waiting for execution data to finalize the next reward epoch.",
-          },
-        }),
-      );
+    const applyLocalAccept = (extraNote?: string) => {
+      startTransition(() => {
+        setProofStatus("verified");
+        updateProofLine("Verifier output", "Accepted", true);
 
-      addActivity({
-        id: `evt-verify-${Date.now()}`,
-        time: formatClock(new Date()),
-        status: "Verified",
-        kind: "success",
-        title: "Proof verifier accepted the rebalance proposal",
-        description:
-          "The proposal was proven to follow the owner-declared policy, pool allowlist, and daily move constraints.",
-        agent: "ProofVerifier",
-        reference: currentProofId,
+        setAgentStates((current) =>
+          updateAgentState(current, {
+            Scout: {
+              status: "Verified",
+              description:
+                "Latest proposal satisfied declared strategy constraints and cleared the verifier.",
+            },
+            Executor: {
+              status: "Ready",
+              description:
+                "Proof gate is open. Executor can submit the rebalance to the vault.",
+            },
+            Treasury: {
+              status: "Queued",
+              description:
+                "Waiting for execution data to finalize the next reward epoch.",
+            },
+          }),
+        );
+
+        addActivity({
+          id: `evt-verify-${Date.now()}`,
+          time: formatClock(new Date()),
+          status: "Verified",
+          kind: "success",
+          title: "Proof verifier accepted the rebalance proposal",
+          description:
+            extraNote ||
+            "The proposal was proven to follow the owner-declared policy, pool allowlist, and daily move constraints.",
+          agent: "ProofVerifier",
+          reference: currentProofId,
+        });
+
+        addTerminalMessage({
+          id: `terminal-verify-${Date.now()}`,
+          role: "agent",
+          text: `Proof accepted. Executor is now allowed to submit the rebalance tied to ${currentProofId}.`,
+          accent: "success",
+        });
+
+        setTimeout(() => setIsBusy(false), 250);
       });
+    };
 
-      addTerminalMessage({
-        id: `terminal-verify-${Date.now()}`,
-        role: "agent",
-        text: `Proof accepted. Executor is now allowed to submit the rebalance tied to ${currentProofId}.`,
-        accent: "success",
+    const applyLocalBlock = (reason: string) => {
+      startTransition(() => {
+        setProofStatus("blocked");
+        updateProofLine("Verifier output", `Blocked — ${reason.slice(0, 60)}`, false);
+
+        setAgentStates((current) =>
+          updateAgentState(current, {
+            Scout: {
+              status: "Held",
+              description:
+                "AI advisor recommended abort. Scout did not sign the warrant.",
+            },
+            Executor: {
+              status: "Idle",
+              description: "Execution gate stays closed until a fresh warrant is issued.",
+            },
+            Treasury: {
+              status: "Standby",
+              description: "No epoch to record — nothing executed.",
+            },
+          }),
+        );
+
+        addActivity({
+          id: `evt-verify-blocked-${Date.now()}`,
+          time: formatClock(new Date()),
+          status: "Blocked",
+          kind: "blocked",
+          title: "AI advisor blocked the warrant",
+          description: reason,
+          agent: "ai-scout-advisor",
+          reference: currentProofId,
+        });
+
+        addTerminalMessage({
+          id: `terminal-verify-blocked-${Date.now()}`,
+          role: "agent",
+          text: `Verification blocked. ${reason}`,
+          accent: "warning",
+        });
+
+        setTimeout(() => setIsBusy(false), 250);
       });
+    };
 
-      setTimeout(() => setIsBusy(false), 250);
+    if (!observation) {
+      // No live observation → fall back to local flip.
+      applyLocalAccept();
+      return;
+    }
+
+    addTerminalMessage({
+      id: `terminal-verify-advise-${Date.now()}`,
+      role: "system",
+      text: "Calling ai-scout-advisor (Anthropic → OpenAI → rule-based fallback)…",
     });
+
+    void fetch("/api/ai/advise", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(observation),
+    })
+      .then(async (response) => {
+        const body = (await response.json()) as {
+          ok?: boolean;
+          advice?: {
+            mode: "anthropic" | "openai" | "rule-based";
+            model?: string;
+            recommendation: "sign-warrant" | "hold" | "widen-range" | "abort";
+            confidence: number;
+            rationale: string;
+          };
+          error?: string;
+        };
+        if (!response.ok || !body.ok || !body.advice) {
+          applyLocalAccept(
+            `advisor unreachable (${body.error ?? "unknown"}); proceeding on on-chain policy gate alone`,
+          );
+          return;
+        }
+        const a = body.advice;
+        const badge = `${a.mode}${a.model ? `/${a.model}` : ""}, confidence ${(a.confidence * 100).toFixed(0)}%`;
+        if (a.recommendation === "abort") {
+          applyLocalBlock(`advisor=${badge} — ${a.rationale.slice(0, 240)}`);
+        } else {
+          applyLocalAccept(
+            `AI advisor (${badge}): ${a.recommendation}. ${a.rationale.slice(0, 300)}`,
+          );
+        }
+      })
+      .catch((err: unknown) => {
+        applyLocalAccept(
+          `advisor network error (${err instanceof Error ? err.message : String(err)}); proceeding on on-chain policy gate alone`,
+        );
+      });
   };
 
   const executeRebalance = () => {

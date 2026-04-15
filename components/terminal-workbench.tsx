@@ -4,6 +4,7 @@ import { Contract } from "ethers";
 import { useState } from "react";
 import { DemoControlPanel } from "@/components/demo-control-panel";
 import { useDemo } from "@/components/demo-provider";
+import { ScoutChat } from "@/components/scout-chat";
 import { useWallet } from "@/components/wallet-context";
 import { useLiveDeployment } from "@/components/live-deployment-context";
 import { CURATED_POOLS, DEFAULT_POOL_ADDRESS } from "@/config/uniswap";
@@ -372,6 +373,10 @@ export function TerminalWorkbench() {
             ))}
           </aside>
         </div>
+      </section>
+
+      <section style={{ marginTop: 24 }}>
+        <ScoutChat />
       </section>
 
       {liveProposal ? (

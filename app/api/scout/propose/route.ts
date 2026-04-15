@@ -12,6 +12,8 @@ import { verifyPoolAgainstFactory } from "@/lib/uniswap/factory";
 import { readOwnerPositions } from "@/lib/uniswap/position-manager";
 import { simulateRouterSwap } from "@/lib/uniswap/swap-router";
 import { getAggregatorQuote } from "@/lib/okx/dex-aggregator";
+import { computeDeviation, getCrossPrice } from "@/lib/okx/market-oracle";
+import { getScoutAdvice, type ScoutObservation } from "@/lib/ai/scout-advisor";
 
 /**
  * Server-side Scout endpoint.
@@ -321,6 +323,58 @@ export async function POST(request: Request) {
       console.warn("[scout] onchain-os aggregator call failed:", okxError);
     }
 
+    // ---- Onchain OS Skill: okx-market-oracle (CEX reference pricing) ----
+    // Public, UN-authenticated OKX v5 market API — no HMAC required.
+    // Provides an external-oracle sanity-check against the on-chain
+    // Uniswap v3 pool price. A large gap between the two is the
+    // strongest possible "do-not-sign-this-warrant" signal.
+    let cexCross: Awaited<ReturnType<typeof getCrossPrice>> | null = null;
+    let cexDeviation: ReturnType<typeof computeDeviation> | null = null;
+    try {
+      cexCross = await getCrossPrice(
+        proposal.snapshot.token0.symbol,
+        proposal.snapshot.token1.symbol,
+      );
+      // `priceToken1InToken0` on the pool snapshot = "how many token0 per 1 token1"
+      //   (e.g. USDT per xETH ≈ 2335)
+      // `cexCross.implied.token0PerToken1` = same convention, from CEX
+      //   (USDT per xETH ≈ 2321)
+      // So we compare these two directly — NOT token1PerToken0, which is
+      // the inverse direction (xETH per USDT ≈ 0.00043).
+      if (cexCross.implied) {
+        cexDeviation = computeDeviation({
+          onchainPrice: proposal.snapshot.priceToken1InToken0,
+          cexImpliedPrice: cexCross.implied.token0PerToken1,
+        });
+      }
+      skillCalls.push({
+        skill: "okx-market-oracle",
+        contract: "onchainos://okx-market-oracle",
+        method: "/api/v5/market/ticker",
+        args: {
+          tokens: [proposal.snapshot.token0.symbol, proposal.snapshot.token1.symbol],
+          onchainPrice: proposal.snapshot.priceToken1InToken0,
+          cexImpliedPrice: cexCross.implied?.token0PerToken1,
+          deviationPct: cexDeviation?.deviationPct?.toFixed(4),
+          alert: cexDeviation?.alert ?? "none",
+        },
+        ok: Boolean(cexCross.implied),
+        note: cexCross.implied
+          ? `On-chain: 1 ${proposal.snapshot.token1.symbol} = ${proposal.snapshot.priceToken1InToken0} ${proposal.snapshot.token0.symbol}. CEX ref: ${cexCross.implied.token0PerToken1}. Deviation ${cexDeviation?.deviationPct?.toFixed(2)}% (alert=${cexDeviation?.alert}).`
+          : "One of the pool tokens has no CEX mapping — deviation check skipped",
+      });
+    } catch (oracleError) {
+      skillCalls.push({
+        skill: "okx-market-oracle",
+        contract: "onchainos://okx-market-oracle",
+        method: "/api/v5/market/ticker",
+        ok: false,
+        note:
+          oracleError instanceof Error ? oracleError.message : "Market oracle call failed",
+      });
+      console.warn("[scout] okx-market-oracle call failed:", oracleError);
+    }
+
     // ---- Uniswap Skill #6: SwapRouter02.exactInputSingle (staticCall) ----
     // Simulate the actual router call-path. Unlike Quoter (pool-math only),
     // this surfaces router-level revert reasons (allowance, recipient
@@ -393,6 +447,108 @@ export async function POST(request: Request) {
           : `SwapRouter02 staticCall reverted (typical for read-only Scout without pre-wired allowance).`,
       );
     }
+    if (cexCross?.implied && cexDeviation) {
+      const pct = cexDeviation.deviationPct.toFixed(2);
+      rationaleExtensions.push(
+        cexDeviation.alert === "severe"
+          ? `⚠️ SEVERE: on-chain price (${proposal.snapshot.priceToken1InToken0}) deviates ${pct}% from OKX CEX reference (${cexCross.implied.token0PerToken1}). Scout should NOT sign this warrant.`
+          : cexDeviation.alert === "warn"
+            ? `⚠️ WARN: on-chain vs CEX deviation ${pct}%. Consider widening range.`
+            : `Oracle OK: on-chain ${proposal.snapshot.priceToken1InToken0} ≈ OKX CEX ${cexCross.implied.token0PerToken1} (deviation ${pct}%).`,
+      );
+    }
+
+    // ---- AI decision layer: ScoutAdvisor ----
+    // Package every signal into a ScoutObservation and hand to the
+    // advisor. Returns an LLM-authored recommendation (if an API key
+    // is configured) or a transparent rule-based fallback. This is the
+    // difference between "rule-based agent" and "AI agent with
+    // pluggable decision backend".
+    const observation: ScoutObservation = {
+      chainId: network.chainId,
+      pool: {
+        address: proposal.snapshot.poolAddress,
+        token0: proposal.snapshot.token0.symbol,
+        token1: proposal.snapshot.token1.symbol,
+        feeBps: proposal.snapshot.feeBps,
+        tickSpacing: proposal.snapshot.tickSpacing,
+        currentTick: proposal.snapshot.currentTick,
+        priceToken1InToken0: proposal.snapshot.priceToken1InToken0,
+        blockNumber: proposal.snapshot.blockNumber,
+      },
+      proposal: {
+        strategyId: proposal.strategyId,
+        risk: body.risk,
+        lowerTick: proposal.action.lowerTick,
+        upperTick: proposal.action.upperTick,
+        proposalHash: proposal.proposalHash,
+        executionHash: proposal.executionHash,
+      },
+      signals: {
+        tickLens: tickNeighborhood
+          ? {
+              populatedTicks: tickNeighborhood.ticks.length,
+              below: tickNeighborhood.below.length,
+              above: tickNeighborhood.above.length,
+            }
+          : undefined,
+        factory: factoryCheck
+          ? { matchesClaim: factoryCheck.matchesClaim }
+          : undefined,
+        nfpm: ownerPositions
+          ? { existingPositions: ownerPositions.matchingPool.length }
+          : undefined,
+        router: routerSim
+          ? { ok: routerSim.ok, note: routerSim.revertReason }
+          : undefined,
+        okxAggregator: onchainOsQuote
+          ? {
+              ok: onchainOsQuote.ok,
+              note:
+                onchainOsQuote.ok === false
+                  ? onchainOsQuote.mode === "unconfigured"
+                    ? "unconfigured"
+                    : onchainOsQuote.note
+                  : undefined,
+            }
+          : undefined,
+        cexOracle:
+          cexCross?.implied && cexDeviation
+            ? {
+                onchainPrice: proposal.snapshot.priceToken1InToken0,
+                cexImpliedPrice: cexCross.implied.token0PerToken1,
+                deviationPct: cexDeviation.deviationPct,
+                alert: cexDeviation.alert,
+              }
+            : undefined,
+      },
+    };
+
+    const llmAdvice = await getScoutAdvice(observation);
+    skillCalls.push({
+      skill: llmAdvice.mode === "rule-based" ? "ai-scout-advisor-fallback" : "ai-scout-advisor",
+      contract: llmAdvice.mode === "anthropic"
+        ? "anthropic://messages"
+        : llmAdvice.mode === "openai"
+          ? "openai://chat.completions"
+          : "warrant://scout-advisor-rules",
+      method:
+        llmAdvice.mode === "anthropic"
+          ? `messages (model=${llmAdvice.model ?? "claude-haiku-4-5"})`
+          : llmAdvice.mode === "openai"
+            ? `chat.completions (model=${llmAdvice.model ?? "gpt-4o-mini"})`
+            : "ruleBasedAdvice",
+      args: {
+        recommendation: llmAdvice.recommendation,
+        confidence: llmAdvice.confidence,
+        flags: llmAdvice.flags,
+      },
+      ok: true,
+      note: `recommendation="${llmAdvice.recommendation}" confidence=${llmAdvice.confidence.toFixed(2)}`,
+    });
+    rationaleExtensions.push(
+      `AI advisor (${llmAdvice.mode}${llmAdvice.model ? `/${llmAdvice.model}` : ""}): recommendation="${llmAdvice.recommendation}" (confidence ${(llmAdvice.confidence * 100).toFixed(0)}%). ${llmAdvice.rationale.slice(0, 220)}`,
+    );
 
     return NextResponse.json({
       ok: true,
@@ -428,6 +584,10 @@ export async function POST(request: Request) {
         ownerPositions,
         routerSim,
         onchainOsQuote,
+        cexCross,
+        cexDeviation,
+        llmAdvice,
+        observation,
       },
       skillCalls,
       skillSummary: {

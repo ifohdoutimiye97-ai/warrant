@@ -132,10 +132,18 @@ contract LiquidityVault {
         // Daily cap: consumes one slot; reverts if exceeded.
         strategyRegistry.consumeRebalance(position.strategyId);
 
-        // Hook for Uniswap liquidity actions:
-        // add / remove / rebalance concentrated ranges using `action.*`.
-        // The structured event allows indexers and judges to reconstruct the
-        // exact parameters that capital moved under.
+        // Capital-movement layer is EXTERNAL to the vault by design. The
+        // vault's single job is to be the proof gate: recompute the
+        // executionHash on-chain from the exact RebalanceAction struct,
+        // consume the warrant (replay-safe), and emit the structured event
+        // below. The actual liquidity work (NFPM mint / decreaseLiquidity /
+        // collect, or SwapRouter02.exactInputSingle) runs at the Executor
+        // agent tier AFTER this transaction confirms — see
+        // `agents/executor-agent.ts` methods `mintPositionViaNfpm`,
+        // `swapLegViaRouter02`, and the composite `executeRebalanceAndMint`.
+        // This separation keeps the vault's attack surface small and lets
+        // any X Layer protocol plug its own post-warrant handler without
+        // forking the gate; see `docs/integration-guide.md`.
         emit RebalanceExecuted(
             vaultId,
             proofId,

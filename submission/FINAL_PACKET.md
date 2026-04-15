@@ -1,6 +1,6 @@
 # Warrant — Proof-gated Liquidity Agents on X Layer
 
-Generated at 2026-04-15T02:54:12.515Z
+Generated at 2026-04-15T03:32:37.867Z
 
 ## Overview
 

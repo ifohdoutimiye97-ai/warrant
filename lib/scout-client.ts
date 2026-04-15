@@ -16,6 +16,41 @@ export type ScoutSkillCall = {
   contract: string;
   method: string;
   args?: Record<string, unknown>;
+  ok?: boolean;
+  note?: string;
+};
+
+export type ScoutAdviceResponse = {
+  mode: "anthropic" | "openai" | "rule-based";
+  model?: string;
+  recommendation: "sign-warrant" | "hold" | "widen-range" | "abort";
+  confidence: number;
+  flags: string[];
+  rationale: string;
+  note?: string;
+};
+
+export type ScoutObservationResponse = {
+  chainId: number;
+  pool: {
+    address: string;
+    token0: string;
+    token1: string;
+    feeBps: number;
+    tickSpacing: number;
+    currentTick: number;
+    priceToken1InToken0: string;
+    blockNumber: number;
+  };
+  proposal: {
+    strategyId: number;
+    risk: "low" | "medium" | "high";
+    lowerTick: number;
+    upperTick: number;
+    proposalHash: string;
+    executionHash: string;
+  };
+  signals: Record<string, unknown>;
 };
 
 export type ScoutProposalResponse =
@@ -27,6 +62,7 @@ export type ScoutProposalResponse =
         proposalHash: string;
         executionHash: string;
         rationale: string;
+        rationaleExtensions?: string[];
         action: RebalanceAction;
         quote: QuoteResult | null;
         snapshot: {
@@ -43,8 +79,15 @@ export type ScoutProposalResponse =
           priceToken0InToken1: string;
           priceToken1InToken0: string;
         };
+        llmAdvice?: ScoutAdviceResponse;
+        observation?: ScoutObservationResponse;
       };
       skillCalls: ScoutSkillCall[];
+      skillSummary?: {
+        uniqueSkills: number;
+        totalCalls: number;
+        modules: string[];
+      };
     }
   | { ok: false; error: string; skillCalls?: ScoutSkillCall[] };
 
