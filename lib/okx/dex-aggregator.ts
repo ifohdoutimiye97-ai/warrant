@@ -26,7 +26,7 @@
  *
  * ### Auth
  *
- * The OKX v5 HMAC auth scheme needs three credentials:
+ * The OKX HMAC auth scheme (same across v5 / v6) needs three credentials:
  *   OKX_API_KEY      — the API key ID
  *   OKX_SECRET_KEY   — used as the HMAC-SHA256 secret
  *   OKX_PASSPHRASE   — set by you at key-creation time
@@ -35,6 +35,13 @@
  * ever shipped to the client. If any of the three is missing we return
  * a structured "unconfigured" response so the product keeps working in
  * dev — we do NOT fall through to mock data.
+ *
+ * ### Version
+ *
+ * This integration targets the **V6** aggregator (`/api/v6/dex/aggregator/quote`).
+ * V5 was deprecated by OKX; requests against it return error code
+ * 50050. V6 renames `chainId → chainIndex` and introduces `swapMode`
+ * as a required parameter. HMAC signing path is unchanged.
  *
  * ### Graceful degradation
  *
@@ -151,15 +158,28 @@ export async function getAggregatorQuote(
     };
   }
 
+  // V6 param changes vs V5:
+  //   chainId → chainIndex
+  //   new required: swapMode ("exactIn" | "exactOut")
+  //   slippage → slippagePercent (value is now a percent 0-100, not a fraction)
+  const slippagePercent = (() => {
+    if (!req.slippage) return "0.5"; // default 0.5%
+    const n = Number(req.slippage);
+    // Back-compat: if caller passed a fraction like "0.01" (1%), convert.
+    if (Number.isFinite(n) && n > 0 && n < 1) return (n * 100).toString();
+    return req.slippage;
+  })();
+
   const query = new URLSearchParams({
-    chainId: String(req.chainId),
+    chainIndex: String(req.chainId),
     fromTokenAddress: req.fromTokenAddress,
     toTokenAddress: req.toTokenAddress,
     amount: req.amount,
-    slippage: req.slippage ?? "0.005",
+    swapMode: "exactIn",
+    slippagePercent,
   }).toString();
 
-  const requestPath = `/api/v5/dex/aggregator/quote?${query}`;
+  const requestPath = `/api/v6/dex/aggregator/quote?${query}`;
   const url = `${OKX_API_BASE}${requestPath}`;
   const timestamp = new Date().toISOString();
 
@@ -202,12 +222,33 @@ export async function getAggregatorQuote(
       };
     }
 
+    // V6 response shape — each hop has dexProtocol.{dexName,percent}
+    // and fromToken/toToken embedded in dexRouterList. We flatten the
+    // hops into a simple display list + keep the raw payload.
     const row = body.data[0] as {
       fromTokenAmount: string;
       toTokenAmount: string;
-      estimatedGas: string;
-      dexRouterList?: Array<{ router: string; routerPercent: string }>;
+      estimateGasFee?: string;
+      estimatedGas?: string;
+      dexRouterList?: Array<{
+        dexProtocol?: { dexName?: string; percent?: string };
+        fromToken?: { tokenSymbol?: string };
+        toToken?: { tokenSymbol?: string };
+      }>;
+      priceImpactPercent?: string;
+      tradeFee?: string;
     };
+
+    const dexes: string[] = [];
+    for (const hop of row.dexRouterList ?? []) {
+      const name = hop.dexProtocol?.dexName ?? "unknown";
+      const pct = hop.dexProtocol?.percent;
+      const from = hop.fromToken?.tokenSymbol ?? "?";
+      const to = hop.toToken?.tokenSymbol ?? "?";
+      dexes.push(
+        pct ? `${name} ${from}→${to} (${pct}%)` : `${name} ${from}→${to}`,
+      );
+    }
 
     return {
       ok: true,
@@ -215,9 +256,8 @@ export async function getAggregatorQuote(
       fromTokenAmount: row.fromTokenAmount,
       toTokenAmount: row.toTokenAmount,
       routerResult: {
-        dexes:
-          row.dexRouterList?.map((r) => `${r.router} (${r.routerPercent}%)`) ?? [],
-        estimatedGas: row.estimatedGas ?? "0",
+        dexes,
+        estimatedGas: row.estimateGasFee ?? row.estimatedGas ?? "0",
       },
       raw: row,
     };

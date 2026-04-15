@@ -298,7 +298,7 @@ export async function POST(request: Request) {
       skillCalls.push({
         skill: "okx-dex-swap",
         contract: "onchainos://okx-dex-swap",
-        method: "/api/v5/dex/aggregator/quote",
+        method: "/api/v6/dex/aggregator/quote",
         args: {
           tokenIn: proposal.snapshot.token0.symbol,
           tokenOut: proposal.snapshot.token1.symbol,
@@ -316,7 +316,7 @@ export async function POST(request: Request) {
       skillCalls.push({
         skill: "okx-dex-swap",
         contract: "onchainos://okx-dex-swap",
-        method: "/api/v5/dex/aggregator/quote",
+        method: "/api/v6/dex/aggregator/quote",
         ok: false,
         note: okxError instanceof Error ? okxError.message : "Aggregator call failed",
       });
