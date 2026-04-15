@@ -27,7 +27,115 @@ type LiveTxStatus =
   | { kind: "idle" }
   | { kind: "pending"; message: string }
   | { kind: "success"; txHash: string }
-  | { kind: "error"; message: string };
+  | { kind: "error"; title: string; detail: string; level: "error" | "info" };
+
+/**
+ * ethers v6 error objects are massive — they embed the full encoded
+ * calldata, gas-estimation frame, and revert payload. Dumping
+ * `error.message` straight into the UI looks like a cipher to a
+ * human observer. This helper extracts the short Solidity revert
+ * reason (if any) and reframes a handful of Warrant-specific
+ * reasons as teaching signals: reverts like "Not executor" ARE the
+ * product working correctly (the on-chain proof gate firing), not
+ * bugs, so we surface them as info-level callouts instead of red
+ * errors.
+ */
+function extractRevertReason(err: unknown): string | undefined {
+  if (typeof err !== "object" || err === null) return undefined;
+  const e = err as {
+    reason?: string;
+    shortMessage?: string;
+    info?: { error?: { message?: string } };
+    message?: string;
+  };
+  if (typeof e.reason === "string" && e.reason.length > 0) return e.reason;
+  const inner = e.info?.error?.message;
+  if (typeof inner === "string" && inner.length > 0) {
+    const match = /reverted(?:\s+with\s+reason\s+string)?\s*[:\s]\s*["']?([^"'\\]+?)["']?(?:\s|$)/i.exec(
+      inner,
+    );
+    if (match?.[1]) return match[1];
+  }
+  if (typeof e.message === "string") {
+    const m1 = /reason="([^"]+)"/.exec(e.message);
+    if (m1?.[1]) return m1[1];
+    const m2 = /execution reverted:\s*"?([^"(\n]+?)"?(?:\s*\(|$)/.exec(e.message);
+    if (m2?.[1]) return m2[1].trim();
+  }
+  return undefined;
+}
+
+function humanizeExecutionError(err: unknown): {
+  title: string;
+  detail: string;
+  level: "error" | "info";
+} {
+  const reason = extractRevertReason(err);
+
+  // Well-known Warrant revert reasons — these are the product's
+  // safety surface firing. Reframe as info, not error.
+  if (reason === "Not executor") {
+    return {
+      level: "info",
+      title: "On-chain policy gate refused this call — as designed.",
+      detail:
+        "LiquidityVault.executeRebalance is gated by `onlyExecutor`. Only the authorised Executor agent wallet (0x4F5A8Bf1…) can consume a warrant. A connected user wallet is deliberately rejected by the contract itself — this is Warrant's core guarantee. To run the full happy-path end-to-end, use `pnpm tsx scripts/run-happy-path.ts`, which drives the four role-separated agent wallets for you.",
+    };
+  }
+  if (reason && /already consumed/i.test(reason)) {
+    return {
+      level: "error",
+      title: "Warrant already consumed.",
+      detail:
+        "This proofId has already been burned by a prior rebalance (warrants are single-use by design). Click Live Scout to generate a fresh proposal with a new proofId, then try again.",
+    };
+  }
+  if (reason && /(not verified|Proof not verified)/i.test(reason)) {
+    return {
+      level: "error",
+      title: "Proof not verified yet.",
+      detail:
+        "The warrant exists on-chain but has not passed the verifier. Run Verify proof first, or regenerate a proposal from Live Scout.",
+    };
+  }
+  if (reason && /(Vault inactive|not exist|Strategy inactive)/i.test(reason)) {
+    return {
+      level: "error",
+      title: "Vault or strategy not active.",
+      detail:
+        "The vaultId / strategyId this action targets is missing or inactive on-chain. Create a strategy in /strategy first (it costs ~0.001 OKB), then retry.",
+    };
+  }
+  if (reason && /user rejected/i.test(reason)) {
+    return {
+      level: "error",
+      title: "Transaction cancelled in the wallet.",
+      detail: "You rejected the transaction in the wallet popup. Try again when ready.",
+    };
+  }
+
+  // Generic fallback — show the short reason if we have one, never
+  // the full encoded stack.
+  if (reason) {
+    return {
+      level: "error",
+      title: "Execution reverted",
+      detail: reason,
+    };
+  }
+
+  const shortMessage =
+    typeof err === "object" && err !== null && "shortMessage" in err
+      ? String((err as { shortMessage: unknown }).shortMessage)
+      : err instanceof Error
+        ? err.message.split(/[\n(]/)[0].trim()
+        : String(err);
+  return {
+    level: "error",
+    title: "Execution failed",
+    detail: shortMessage.slice(0, 280) || "Unknown error.",
+  };
+}
 
 export function TerminalWorkbench() {
   const {
@@ -64,13 +172,20 @@ export function TerminalWorkbench() {
     if (!hasLiveVault) {
       setLiveTx({
         kind: "error",
-        message: "No live LiquidityVault in the deployment manifest yet.",
+        level: "error",
+        title: "Deployment manifest incomplete",
+        detail: "No live LiquidityVault address in the deployment manifest yet.",
       });
       return;
     }
     const signer = await getSigner();
     if (!signer) {
-      setLiveTx({ kind: "error", message: "Connect a wallet to sign the execution tx." });
+      setLiveTx({
+        kind: "error",
+        level: "error",
+        title: "Wallet not connected",
+        detail: "Connect a wallet to sign the execution tx.",
+      });
       return;
     }
 
@@ -108,9 +223,8 @@ export function TerminalWorkbench() {
       await tx.wait();
       setLiveTx({ kind: "success", txHash: tx.hash });
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Execution call reverted.";
-      setLiveTx({ kind: "error", message });
+      const humanized = humanizeExecutionError(error);
+      setLiveTx({ kind: "error", ...humanized });
     }
   }
 
@@ -665,9 +779,86 @@ export function TerminalWorkbench() {
             </p>
           ) : null}
           {liveTx.kind === "error" ? (
-            <p style={{ marginTop: 14, fontSize: 12, color: "var(--status-danger)" }}>
-              {liveTx.message}
-            </p>
+            <div
+              role="alert"
+              style={{
+                marginTop: 14,
+                padding: "14px 16px",
+                borderRadius: 12,
+                display: "grid",
+                gap: 6,
+                background:
+                  liveTx.level === "info"
+                    ? "rgba(143, 245, 255, 0.08)"
+                    : "rgba(255, 113, 108, 0.08)",
+                border: `1px solid ${
+                  liveTx.level === "info"
+                    ? "rgba(143, 245, 255, 0.35)"
+                    : "rgba(255, 113, 108, 0.4)"
+                }`,
+                boxShadow:
+                  liveTx.level === "info"
+                    ? "0 0 24px rgba(143, 245, 255, 0.12)"
+                    : "0 0 24px rgba(255, 113, 108, 0.12)",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  fontSize: 11,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.1em",
+                  color:
+                    liveTx.level === "info"
+                      ? "var(--brand-cyan)"
+                      : "var(--status-danger)",
+                  fontFamily: "Space Grotesk",
+                }}
+              >
+                <span
+                  style={{
+                    width: 7,
+                    height: 7,
+                    borderRadius: 999,
+                    background:
+                      liveTx.level === "info"
+                        ? "var(--brand-cyan)"
+                        : "var(--status-danger)",
+                    boxShadow:
+                      liveTx.level === "info"
+                        ? "0 0 8px var(--brand-cyan)"
+                        : "0 0 8px var(--status-danger)",
+                    display: "inline-block",
+                  }}
+                />
+                {liveTx.level === "info"
+                  ? "proof gate fired"
+                  : "execution reverted"}
+              </div>
+              <strong
+                style={{
+                  fontSize: 14,
+                  color:
+                    liveTx.level === "info"
+                      ? "var(--brand-cyan)"
+                      : "var(--status-danger)",
+                }}
+              >
+                {liveTx.title}
+              </strong>
+              <p
+                style={{
+                  fontSize: 12,
+                  color: "var(--text-secondary)",
+                  lineHeight: 1.55,
+                  margin: 0,
+                }}
+              >
+                {liveTx.detail}
+              </p>
+            </div>
           ) : null}
         </section>
       ) : null}
