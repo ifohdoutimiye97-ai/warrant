@@ -25,7 +25,7 @@ warrant = one execution.
   calls per Scout proposal
 
 🔗 warrant-xi.vercel.app
-📝 github.com/<TBD_GITHUB_HANDLE>/warrant
+📝 github.com/ifohdoutimiye97-ai/warrant
 
 #XLayerHackathon
 ```
@@ -100,7 +100,7 @@ Try it:
  → Click "⚡ Live scout (X Layer Uniswap v3)"
  → Watch 12 skill calls fire against mainnet in real time
 
-Source + demo: github.com/<TBD_GITHUB_HANDLE>/warrant
+Source + demo: github.com/ifohdoutimiye97-ai/warrant
 Demo video:    <TBD_VIDEO_LINK>
 
 @XLayerOfficial #XLayerHackathon

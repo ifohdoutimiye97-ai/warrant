@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-04-15T02:27:57.037Z",
+  "generatedAt": "2026-04-15T02:54:12.515Z",
   "overview": {
     "projectName": "Warrant — Proof-gated Liquidity Agents on X Layer",
     "shortPitch": "Warrant is a proof-gated liquidity agent system on X Layer. Capital cannot move until a warrant clears the verifier. No warrant, no move.",
@@ -248,7 +248,7 @@
     },
     {
       "field": "GitHub repo",
-      "value": "TBD_GITHUB_LINK"
+      "value": "https://github.com/ifohdoutimiye97-ai/warrant"
     },
     {
       "field": "X or Moltbook post",

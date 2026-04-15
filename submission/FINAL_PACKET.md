@@ -1,6 +1,6 @@
 # Warrant — Proof-gated Liquidity Agents on X Layer
 
-Generated at 2026-04-15T02:27:57.037Z
+Generated at 2026-04-15T02:54:12.515Z
 
 ## Overview
 
@@ -117,7 +117,7 @@ Four role-separated agent wallets (Owner, Scout, Executor, Treasury) share state
 | Field | Value |
 | --- | --- |
 | Demo video | TBD_VIDEO_LINK |
-| GitHub repo | TBD_GITHUB_LINK |
+| GitHub repo | https://github.com/ifohdoutimiye97-ai/warrant |
 | X or Moltbook post | TBD_SOCIAL_LINK |
 
 ## Google Form Copy

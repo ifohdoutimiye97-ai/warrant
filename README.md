@@ -17,7 +17,7 @@ by clicking through the right column.
 | 1 | At least one component built on X Layer | ✅ | All 5 contracts deployed on X Layer mainnet **chainId 196** — see [`deployments/xlayer-196.json`](./deployments/xlayer-196.json) and the [Deployment addresses](#deployment-addresses) section. Every Scout proposal reads live state from X Layer RPC. |
 | 2 | Agentic Wallet as the on-chain identity; multi-agent roles documented in README | ✅ | **4 role-separated agent wallets** documented below in [Agent wallet identities](#agent-wallet-identities) — Owner, Scout, Executor, Treasury. Full permission graph in [docs/agent-identities.md](./docs/agent-identities.md). |
 | 3 | Call at least one core module of Onchain OS Skill OR Uniswap Skill | ✅ | **7 Skill modules integrated, 12 live calls per Scout proposal** — see [Onchain OS / Uniswap Skill usage](#onchain-os--uniswap-skill-usage). Uniswap: `V3Pool`, `QuoterV2`, `TickLens`, `V3Factory`, `NFPM`, `SwapRouter02`. Onchain OS: `okx-dex-swap` (HMAC-signed DEX Aggregator). |
-| 4a | Code in a public GitHub repo | 🕓 | Repo URL will be populated on push — see the [Team](#team) section. |
+| 4a | Code in a public GitHub repo | ✅ | <https://github.com/ifohdoutimiye97-ai/warrant> |
 | 4b | README — Project intro | ✅ | [Project intro](#project-intro) |
 | 4c | README — Architecture overview | ✅ | [Architecture overview](#architecture-overview) |
 | 4d | README — Deployment addresses | ✅ | [Deployment addresses](#deployment-addresses) + [End-to-end verification on X Layer mainnet](#end-to-end-verification-on-x-layer-mainnet) |
@@ -380,7 +380,7 @@ per-wallet permission surface and key rotation procedures.
 | Team name | X Builder |
 | Builder 1 | X Builder |
 | Builder 2 (optional) | — |
-| GitHub repo | `https://github.com/<TBD_GITHUB_HANDLE>/warrant` |
+| GitHub repo | <https://github.com/ifohdoutimiye97-ai/warrant> |
 | Demo video | `<TBD_VIDEO_LINK>` (YouTube or Google Drive) |
 | X post link | `<TBD_SOCIAL_LINK>` (must include `#XLayerHackathon`) |
 
@@ -480,5 +480,5 @@ Still required before final live submission (human action):
 - Real demo video URL (YouTube or Google Drive) — see [`docs/demo-script.md`](./docs/demo-script.md) for the shooting script
 - X post link with `#XLayerHackathon` and `@XLayerOfficial` — see [`docs/x-post-template.md`](./docs/x-post-template.md) for paste-ready copy
 - Team name + builder names in the Team table above
-- Public GitHub repo URL (replace `<TBD_GITHUB_HANDLE>` everywhere)
+- Repository live at <https://github.com/ifohdoutimiye97-ai/warrant>
 - Populate `OKX_API_KEY` / `OKX_SECRET_KEY` / `OKX_PASSPHRASE` in `.env` once credentials are issued from [web3.okx.com/zh-hans/onchainos](https://web3.okx.com/zh-hans/onchainos) (the okx-dex-swap skill runs in graceful-degradation mode without them).

@@ -184,7 +184,7 @@ export const submissionLinks = [
   },
   {
     field: "GitHub repo",
-    value: "TBD_GITHUB_LINK",
+    value: "https://github.com/ifohdoutimiye97-ai/warrant",
   },
   {
     field: "X or Moltbook post",
