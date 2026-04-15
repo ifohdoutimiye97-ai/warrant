@@ -446,7 +446,8 @@ pnpm submission:check
 ## Submission materials in this repo
 
 - [docs/product-overview.md](./docs/product-overview.md) — full product story (problems, value, differentiation, use cases)
-- [docs/demo-script.md](./docs/demo-script.md)
+- [docs/demo-script.md](./docs/demo-script.md) — 90–120 s shooting script for the demo video
+- [docs/demo-guide.md](./docs/demo-guide.md) — user-wallet-with-0.2-OKB operations guide (what the owner wallet is allowed to sign vs. what the agents do)
 - [docs/submission-checklist.md](./docs/submission-checklist.md)
 - [docs/submission-form.en.md](./docs/submission-form.en.md)
 - [docs/submission-form.zh.md](./docs/submission-form.zh.md)
