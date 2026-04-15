@@ -97,11 +97,20 @@ const SYSTEM_PROMPT = `You are the Scout agent for Warrant, a proof-gated liquid
 
 Your job: look at a rebalance proposal + all on-chain signals gathered by the 8 Skill modules (Uniswap v3 Pool, QuoterV2, TickLens, V3Factory, NonfungiblePositionManager, SwapRouter02, OKX DEX Aggregator, OKX Market Oracle) and decide whether the Scout should sign a warrant.
 
+IMPORTANT — correct interpretation of signals (common sources of false alarms):
+  * SwapRouter02 staticCall REVERTING is EXPECTED in read-only Scout mode, because the recipient has not yet wired an ERC-20 allowance to the router. This is NOT a danger signal by itself. Only flag if the revert reason indicates pool misconfiguration (wrong fee, unknown pool).
+  * NFPM showing recipient holds 0 LP NFTs matching this pool is a NORMAL "fresh-mint path" — the owner has not yet opened a position. This is NOT suspicious.
+  * The REAL danger signals are:
+      - V3Factory.matchesClaim === false  (claimed pool address is not canonical — possible lookalike contract)
+      - OKX Market Oracle deviation "severe" (>= 5% gap between on-chain and CEX reference)
+      - TickLens populatedTicks === 0 (the proposed range sits in dead water)
+      - The Scout's proposed [lowerTick, upperTick] not spanning currentTick (proposal would be out-of-range immediately)
+
 Output ONE of four recommendations:
-  - "sign-warrant" — all signals healthy, proposed range is defensible, Scout should sign.
-  - "widen-range" — proposal looks directionally right but the range is too tight for current conditions. Scout should widen before signing.
-  - "hold" — signals are inconclusive or mildly suspicious. Scout should wait a block or two and re-observe.
-  - "abort" — signals indicate manipulation, wrong pool, severe price deviation, or policy violation. Scout should NOT sign.
+  - "sign-warrant" — factory matches, oracle deviation within tolerance, proposal spans currentTick, at least 1 populated tick nearby. Scout should sign.
+  - "widen-range" — signals mostly healthy, but the range is unusually tight OR CEX deviation is in the "warn" band (1.5–5%). Ask to widen before signing.
+  - "hold" — one or two signals are inconclusive or a probe call (Quoter/Aggregator) failed transiently. Re-observe next block.
+  - "abort" — V3Factory mismatch, oracle deviation "severe", or any clear manipulation / policy violation. Scout must NOT sign.
 
 Be decisive. Be brief. Cite the specific signal numbers that drove your decision.
 
@@ -299,29 +308,53 @@ async function callAnthropic(obs: ScoutObservation): Promise<ScoutAdvice | null>
 }
 
 /**
- * Call OpenAI Chat Completions API with GPT-4o-mini. Returns null on any
- * failure so the caller can fall through to the rule-based path.
+ * Resolve the OpenAI-compatible base URL + model name, with graceful
+ * defaults. We support any OpenAI-API-compatible proxy (turbo-api.com,
+ * one-api, openai-proxy, Azure, etc.) by letting the operator set
+ * `OPENAI_BASE_URL`. When unset we target OpenAI directly.
+ *
+ * The base URL may be given with or without a `/v1` suffix — both
+ * `https://api.openai.com` and `https://api.openai.com/v1` work.
+ */
+function resolveOpenAIEndpoint(): { url: string; model: string } {
+  const raw = (process.env.OPENAI_BASE_URL ?? "https://api.openai.com").trim();
+  const normalized = raw.replace(/\/+$/, "");
+  const url = normalized.endsWith("/v1")
+    ? `${normalized}/chat/completions`
+    : `${normalized}/v1/chat/completions`;
+  const model = (process.env.OPENAI_MODEL ?? "gpt-4o-mini").trim() || "gpt-4o-mini";
+  return { url, model };
+}
+
+/**
+ * Call an OpenAI-compatible Chat Completions endpoint. Defaults to
+ * OpenAI / gpt-4o-mini. `OPENAI_BASE_URL` + `OPENAI_MODEL` env vars
+ * let the operator target any compatible proxy or self-hosted
+ * gateway. Returns null on any failure so the caller can fall through
+ * to the rule-based path.
  */
 async function callOpenAI(obs: ScoutObservation): Promise<ScoutAdvice | null> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return null;
 
+  const { url, model } = resolveOpenAIEndpoint();
+
   try {
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    const response = await fetch(url, {
       method: "POST",
       headers: {
         authorization: `Bearer ${apiKey}`,
         "content-type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model,
         response_format: { type: "json_object" },
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           { role: "user", content: observationAsUserMessage(obs) },
         ],
       }),
-      signal: AbortSignal.timeout(10_000),
+      signal: AbortSignal.timeout(15_000),
     });
     if (!response.ok) return null;
     const body = (await response.json()) as {
@@ -333,7 +366,7 @@ async function callOpenAI(obs: ScoutObservation): Promise<ScoutAdvice | null> {
     if (!parsed) return null;
     return {
       mode: "openai",
-      model: body.model ?? "gpt-4o-mini",
+      model: body.model ?? model,
       recommendation: normalizeRecommendation(parsed.recommendation),
       confidence: Math.max(0, Math.min(1, Number(parsed.confidence ?? 0.5))),
       flags: Array.isArray(parsed.flags) ? parsed.flags.slice(0, 8) : [],
@@ -414,15 +447,16 @@ ${observationAsUserMessage(params.observation)}`,
 
   const openaiKey = process.env.OPENAI_API_KEY;
   if (openaiKey) {
+    const { url, model } = resolveOpenAIEndpoint();
     try {
-      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      const response = await fetch(url, {
         method: "POST",
         headers: {
           authorization: `Bearer ${openaiKey}`,
           "content-type": "application/json",
         },
         body: JSON.stringify({
-          model: "gpt-4o-mini",
+          model,
           messages: [
             {
               role: "system",
@@ -432,7 +466,7 @@ ${observationAsUserMessage(params.observation)}`,
             { role: "user", content: params.question },
           ],
         }),
-        signal: AbortSignal.timeout(10_000),
+        signal: AbortSignal.timeout(15_000),
       });
       if (response.ok) {
         const body = (await response.json()) as {
@@ -440,7 +474,7 @@ ${observationAsUserMessage(params.observation)}`,
           model?: string;
         };
         const text = body.choices?.[0]?.message?.content ?? "";
-        return { mode: "openai", text, model: body.model ?? "gpt-4o-mini" };
+        return { mode: "openai", text, model: body.model ?? model };
       }
     } catch {
       // Fall through.
