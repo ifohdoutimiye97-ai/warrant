@@ -1,6 +1,6 @@
 # Warrant — Proof-gated Liquidity Agents on X Layer
 
-Generated at 2026-04-15T06:29:55.723Z
+Generated at 2026-04-15T06:34:24.297Z
 
 ## Overview
 
@@ -118,8 +118,8 @@ Four role-separated agent wallets (Owner, Scout, Executor, Treasury) share state
 | --- | --- |
 | Live demo | https://warrant-xi.vercel.app |
 | GitHub repo | https://github.com/ifohdoutimiye97-ai/warrant |
-| Demo video | TBD_VIDEO_LINK |
-| X or Moltbook post | TBD_SOCIAL_LINK |
+| Demo video | https://youtu.be/-e0uK-oT6d8 |
+| X or Moltbook post | https://x.com/WarrantAi/status/2044299892562989101 |
 
 ## Google Form Copy
 
@@ -163,7 +163,7 @@ Compile strategy -> Generate scout proposal -> Verify warrant -> Execute rebalan
 | Onchain OS Skill integration — okx-dex-swap | Done | lib/okx/dex-aggregator.ts + /api/okx/quote wire the okx-dex-swap Skill from okx/onchainos-skills via HMAC-SHA256 signed REST calls to /api/v5/dex/aggregator/quote. The HMAC auth path is fully implemented; it degrades gracefully to a structured 'unconfigured' response when OKX credentials are absent. |
 | Production Treasury Agent | Done | agents/treasury-agent.ts ships a real class with settleEpochOnchain (broadcasts RewardSplitter.recordEpoch) and watchAndSettle (subscribes to RebalanceExecuted events). Exercised end-to-end in scripts/run-happy-path.ts. |
 | Real X Layer deployment addresses | Done | Deployed to X Layer mainnet (chainId 196) on 2026-04-12. StrategyRegistry 0x531eC789, ProofVerifier 0xe157673b, AttestationVerifier 0x9c0AC1C1, LiquidityVault 0xbFFc45c9, RewardSplitter 0x81AdD46B. Manifest: deployments/xlayer-196.json. |
-| Demo and social links | Pending | Video link and X or Moltbook link are still placeholders and must be recorded before submission. |
+| Demo and social links | Done | Demo video live at https://youtu.be/-e0uK-oT6d8 and project-announcement post at https://x.com/WarrantAi/status/2044299892562989101 (handle: @WarrantAi). |
 
 ## Checklist
 

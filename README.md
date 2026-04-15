@@ -5,6 +5,8 @@
 ### 🔗 Try it now — live on mainnet
 
 - 🌐 **Live demo**: <https://warrant-xi.vercel.app>
+- 🎬 **Demo video**: <https://youtu.be/-e0uK-oT6d8>
+- 🐦 **X announcement**: <https://x.com/WarrantAi/status/2044299892562989101>
 - 📦 **Repo**: <https://github.com/ifohdoutimiye97-ai/warrant>
 - 🔍 **One-click integration proof**: [`POST /api/scout/propose`](https://warrant-xi.vercel.app/api/scout/propose) — returns 9 Skills × 14 live calls in a single JSON response
 
@@ -426,6 +428,8 @@ integration.**
 | Team name | X Builder |
 | Builder 1 | X Builder |
 | Live demo | <https://warrant-xi.vercel.app> |
+| Demo video | <https://youtu.be/-e0uK-oT6d8> |
+| X announcement | <https://x.com/WarrantAi/status/2044299892562989101> |
 | Repository | <https://github.com/ifohdoutimiye97-ai/warrant> |
 
 ---
@@ -450,7 +454,7 @@ protocol can gate its own actions on a Warrant-issued proof. See
 | **X Layer lending markets** | Gate `borrow` / `flashLoan` behind `isVerified` | Agent-managed leverage without blanket key delegation |
 | **X Layer DAO treasuries** | Pre-vote calldata check via `consumeProof` | Agent-drafted treasury proposals with on-chain policy receipts |
 | **X Layer bridges** | Attach a warrant to every agent-initiated cross-chain transfer | Auditable outbound flows |
-| **NFPM-native LP managers on X Layer** (Gamma-style, Arrakis-style) | Optional drop-in warrant check before position modification | Third-party LP managers can advertise "warrant-gated" tier |
+| **NFPM-native LP managers on X Layer** (Gamma-style, Arrakis-style) | Drop-in warrant check before position modification | Third-party LP managers can advertise "warrant-gated" tier |
 
 Warrant's Scout is shared infrastructure — any protocol that wants
 the warrant pattern can either consume Scout's proposals or run its

@@ -189,11 +189,11 @@ export const submissionLinks = [
   },
   {
     field: "Demo video",
-    value: "TBD_VIDEO_LINK",
+    value: "https://youtu.be/-e0uK-oT6d8",
   },
   {
     field: "X or Moltbook post",
-    value: "TBD_SOCIAL_LINK",
+    value: "https://x.com/WarrantAi/status/2044299892562989101",
   },
 ];
 
@@ -368,7 +368,7 @@ export const readinessTasks = [
   },
   {
     title: "Demo and social links",
-    status: "Pending",
-    note: "Video link and X or Moltbook link are still placeholders and must be recorded before submission.",
+    status: "Done",
+    note: "Demo video live at https://youtu.be/-e0uK-oT6d8 and project-announcement post at https://x.com/WarrantAi/status/2044299892562989101 (handle: @WarrantAi).",
   },
 ];
