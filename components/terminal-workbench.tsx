@@ -360,17 +360,39 @@ export function TerminalWorkbench() {
           </div>
 
           <aside style={{ display: "grid", gap: 12 }}>
-            {sideStats.map((stat) => (
-              <div className="stat-card" key={stat.label}>
-                <span className="stat-label">{stat.label}</span>
-                <strong
-                  className={`stat-value ${stat.mono ? "font-mono" : ""}`}
-                  style={stat.mono ? { fontSize: "1.05rem" } : undefined}
-                >
-                  {stat.value}
-                </strong>
-              </div>
-            ))}
+            {sideStats.map((stat) => {
+              // The "Proof state" card is the hero of the terminal —
+              // every state transition (idle → proposed → verified →
+              // executed, plus blocked) lights it up with a one-shot
+              // flash + a low-amplitude infinite pulse in the state's
+              // semantic colour. Re-keying on proofStatus guarantees
+              // React re-mounts the element so the flash replays on
+              // every transition.
+              const isProofCard = stat.label === "Proof state";
+              const proofClass = isProofCard
+                ? proofStatus === "proposed"
+                  ? "stat-card stat-card--proof stat-card--proof-proposed"
+                  : proofStatus === "verified"
+                    ? "stat-card stat-card--proof stat-card--proof-verified"
+                    : proofStatus === "executed"
+                      ? "stat-card stat-card--proof stat-card--proof-executed"
+                      : proofStatus === "blocked"
+                        ? "stat-card stat-card--proof stat-card--proof-blocked"
+                        : "stat-card"
+                : "stat-card";
+              const key = isProofCard ? `${stat.label}-${proofStatus}` : stat.label;
+              return (
+                <div className={proofClass} key={key}>
+                  <span className="stat-label">{stat.label}</span>
+                  <strong
+                    className={`stat-value ${stat.mono ? "font-mono" : ""}`}
+                    style={stat.mono ? { fontSize: "1.05rem" } : undefined}
+                  >
+                    {stat.value}
+                  </strong>
+                </div>
+              );
+            })}
           </aside>
         </div>
       </section>

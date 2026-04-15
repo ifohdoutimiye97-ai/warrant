@@ -1386,3 +1386,182 @@ body {
   background-size: 200% 100%;
   animation: shimmer 3s linear infinite;
 }
+
+/* ============================================================
+   Proof-state indicator — dramatic visual feedback for the
+   sideStats "Proof state" card when state transitions
+   (IDLE → PROPOSED → VERIFIED → EXECUTED) or is BLOCKED.
+   Gives the terminal a tangible "something happened" response
+   when the user clicks Live Scout / Verify / Execute.
+   ============================================================ */
+
+@keyframes proof-state-flash {
+  0% {
+    transform: scale(1);
+    background: var(--surface-2);
+    border-color: var(--line);
+    box-shadow: 0 0 0 rgba(143, 245, 255, 0);
+  }
+  10% {
+    transform: scale(1.035);
+    background: rgba(143, 245, 255, 0.12);
+    border-color: var(--brand-cyan-bright);
+    box-shadow:
+      0 0 24px rgba(143, 245, 255, 0.55),
+      0 0 48px rgba(143, 245, 255, 0.3);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes proof-state-pulse-cyan {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 rgba(143, 245, 255, 0.15),
+      0 0 0 rgba(143, 245, 255, 0);
+    border-color: rgba(143, 245, 255, 0.45);
+  }
+  50% {
+    box-shadow:
+      0 0 22px rgba(143, 245, 255, 0.4),
+      0 0 44px rgba(143, 245, 255, 0.18);
+    border-color: var(--brand-cyan-bright);
+  }
+}
+
+@keyframes proof-state-pulse-green {
+  0%,
+  100% {
+    box-shadow: 0 0 0 rgba(94, 234, 212, 0.15);
+    border-color: rgba(94, 234, 212, 0.45);
+  }
+  50% {
+    box-shadow:
+      0 0 22px rgba(94, 234, 212, 0.5),
+      0 0 44px rgba(94, 234, 212, 0.2);
+    border-color: var(--status-success);
+  }
+}
+
+@keyframes proof-state-pulse-purple {
+  0%,
+  100% {
+    box-shadow: 0 0 0 rgba(196, 127, 255, 0.15);
+    border-color: rgba(196, 127, 255, 0.45);
+  }
+  50% {
+    box-shadow:
+      0 0 22px rgba(196, 127, 255, 0.5),
+      0 0 44px rgba(196, 127, 255, 0.2);
+    border-color: var(--brand-purple);
+  }
+}
+
+@keyframes proof-state-pulse-red {
+  0%,
+  100% {
+    box-shadow: 0 0 0 rgba(255, 113, 108, 0.2);
+    border-color: rgba(255, 113, 108, 0.5);
+  }
+  50% {
+    box-shadow:
+      0 0 22px rgba(255, 113, 108, 0.55),
+      0 0 44px rgba(255, 113, 108, 0.25);
+    border-color: var(--status-danger);
+  }
+}
+
+/* Base: every proof-state card has a quick flash on any state change */
+.stat-card--proof {
+  transition:
+    background 0.25s ease,
+    border-color 0.25s ease,
+    box-shadow 0.25s ease,
+    transform 0.25s ease;
+  animation: proof-state-flash 900ms ease-out;
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-card--proof::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0.55;
+  mix-blend-mode: screen;
+}
+
+.stat-card--proof-proposed {
+  background: linear-gradient(
+    135deg,
+    rgba(143, 245, 255, 0.1) 0%,
+    rgba(143, 245, 255, 0.02) 100%
+  );
+  animation:
+    proof-state-flash 900ms ease-out,
+    proof-state-pulse-cyan 2.6s ease-in-out 900ms infinite;
+}
+.stat-card--proof-proposed .stat-value {
+  color: var(--brand-cyan);
+  text-shadow: 0 0 10px rgba(143, 245, 255, 0.55);
+}
+
+.stat-card--proof-verified {
+  background: linear-gradient(
+    135deg,
+    rgba(94, 234, 212, 0.1) 0%,
+    rgba(94, 234, 212, 0.02) 100%
+  );
+  animation:
+    proof-state-flash 900ms ease-out,
+    proof-state-pulse-green 2.6s ease-in-out 900ms infinite;
+}
+.stat-card--proof-verified .stat-value {
+  color: var(--status-success);
+  text-shadow: 0 0 10px rgba(94, 234, 212, 0.55);
+}
+
+.stat-card--proof-executed {
+  background: linear-gradient(
+    135deg,
+    rgba(196, 127, 255, 0.1) 0%,
+    rgba(196, 127, 255, 0.02) 100%
+  );
+  animation:
+    proof-state-flash 900ms ease-out,
+    proof-state-pulse-purple 2.6s ease-in-out 900ms infinite;
+}
+.stat-card--proof-executed .stat-value {
+  color: var(--brand-purple);
+  text-shadow: 0 0 10px rgba(196, 127, 255, 0.55);
+}
+
+.stat-card--proof-blocked {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 113, 108, 0.12) 0%,
+    rgba(255, 113, 108, 0.02) 100%
+  );
+  animation:
+    proof-state-flash 900ms ease-out,
+    proof-state-pulse-red 2.6s ease-in-out 900ms infinite;
+}
+.stat-card--proof-blocked .stat-value {
+  color: var(--status-danger);
+  text-shadow: 0 0 10px rgba(255, 113, 108, 0.55);
+}
+
+/* Respect reduced-motion — disable the infinite pulse but keep the flash. */
+@media (prefers-reduced-motion: reduce) {
+  .stat-card--proof,
+  .stat-card--proof-proposed,
+  .stat-card--proof-verified,
+  .stat-card--proof-executed,
+  .stat-card--proof-blocked {
+    animation: none !important;
+  }
+}
