@@ -2,6 +2,12 @@
 
 **Proof-gated liquidity agents on X Layer. No warrant, no move.**
 
+### 🔗 Try it now — live on mainnet
+
+- 🌐 **Live demo**: <https://warrant-xi.vercel.app>
+- 📦 **Repo**: <https://github.com/ifohdoutimiye97-ai/warrant>
+- 🔍 **One-click integration proof**: [`POST /api/scout/propose`](https://warrant-xi.vercel.app/api/scout/propose) — returns 9 Skills × 14 live calls in a single JSON response
+
 Warrant is a **full-stack, mainnet-deployed** submission for Build X Season 2
 (X Layer Arena). Owners declare a Uniswap v3 liquidity strategy in plain
 language, and every AI-driven rebalance must clear a *warrant* — a proof
@@ -419,6 +425,7 @@ integration.**
 |---|---|
 | Team name | X Builder |
 | Builder 1 | X Builder |
+| Live demo | <https://warrant-xi.vercel.app> |
 | Repository | <https://github.com/ifohdoutimiye97-ai/warrant> |
 
 ---

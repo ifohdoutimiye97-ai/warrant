@@ -14,6 +14,7 @@ export const submissionOverview = {
   projectName: "Warrant — Proof-gated Liquidity Agents on X Layer",
   shortPitch:
     "Warrant is a proof-gated liquidity agent system on X Layer. Capital cannot move until a warrant clears the verifier. No warrant, no move.",
+  liveDemo: "https://warrant-xi.vercel.app",
   category: "X Layer Arena",
   primaryIntegrations: [
     "X Layer (chainId 196)",
@@ -179,12 +180,16 @@ export const teamTemplate = [
 
 export const submissionLinks = [
   {
-    field: "Demo video",
-    value: "TBD_VIDEO_LINK",
+    field: "Live demo",
+    value: "https://warrant-xi.vercel.app",
   },
   {
     field: "GitHub repo",
     value: "https://github.com/ifohdoutimiye97-ai/warrant",
+  },
+  {
+    field: "Demo video",
+    value: "TBD_VIDEO_LINK",
   },
   {
     field: "X or Moltbook post",

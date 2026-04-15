@@ -1,8 +1,9 @@
 {
-  "generatedAt": "2026-04-15T06:14:58.206Z",
+  "generatedAt": "2026-04-15T06:29:55.723Z",
   "overview": {
     "projectName": "Warrant — Proof-gated Liquidity Agents on X Layer",
     "shortPitch": "Warrant is a proof-gated liquidity agent system on X Layer. Capital cannot move until a warrant clears the verifier. No warrant, no move.",
+    "liveDemo": "https://warrant-xi.vercel.app",
     "category": "X Layer Arena",
     "primaryIntegrations": [
       "X Layer (chainId 196)",
@@ -243,12 +244,16 @@
   ],
   "submissionLinks": [
     {
-      "field": "Demo video",
-      "value": "TBD_VIDEO_LINK"
+      "field": "Live demo",
+      "value": "https://warrant-xi.vercel.app"
     },
     {
       "field": "GitHub repo",
       "value": "https://github.com/ifohdoutimiye97-ai/warrant"
+    },
+    {
+      "field": "Demo video",
+      "value": "TBD_VIDEO_LINK"
     },
     {
       "field": "X or Moltbook post",
